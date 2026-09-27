@@ -1,0 +1,6 @@
+{
+  "name": "Plan de Minimización de Residuos Sólidos (PMMRS)",
+  "description": "Plataforma integral para la elaboración, revisión técnica y fiscalización del Plan de Minimización y Manejo de Residuos Sólidos No Municipales según RM 089-2023-MINAM, DL 1278 y NTP 900.058:2019.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
