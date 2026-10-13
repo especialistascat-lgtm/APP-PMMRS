@@ -161,9 +161,14 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
             </div>
 
             <p className="text-xs text-slate-400 leading-relaxed">
-              Carga tu archivo PDF/Word o texto existente. El motor analiza los 13 capítulos mínimos de la RM 089, 
-              detecta omisiones, frases genéricas no trazables, inconsistencias numéricas y calcula el porcentaje de cumplimiento técnico.
+              Carga tu archivo en formato <strong className="text-red-400">PDF</strong>, <strong className="text-blue-400">Word</strong> o <strong className="text-emerald-400">Excel</strong>. El motor extrae el texto automáticamente sin errores binarios, mapea los 13 capítulos mínimos de la RM 089, detecta omisiones y calcula la conformidad técnica.
             </p>
+
+            <div className="flex items-center gap-2 pt-1">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-red-950/70 text-red-300 border border-red-800/50">PDF (.pdf)</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-950/70 text-blue-300 border border-blue-800/50">Word (.docx)</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950/70 text-emerald-300 border border-emerald-800/50">Excel (.xlsx)</span>
+            </div>
 
             <ul className="text-xs space-y-2 text-slate-300 pt-2 border-t border-slate-700/50">
               <li className="flex items-center gap-2">

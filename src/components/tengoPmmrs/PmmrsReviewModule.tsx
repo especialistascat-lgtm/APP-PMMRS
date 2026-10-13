@@ -21,6 +21,9 @@ import { AiAnalysisService } from '../../services/aiAnalysisService';
 import { ProjectStorage } from '../../services/projectStorage';
 import { SAMPLE_PMMRS_DOCUMENT_TEXT } from '../../data/demoProject';
 import { GryphosLogo } from '../GryphosLogo';
+import { DocumentUploaderCard } from '../common/DocumentUploaderCard';
+import { DocumentFormatIcon } from '../common/DocumentFormatIcon';
+import { ExtractedDocumentInfo, detectDocumentType } from '../../services/documentExtractor';
 
 interface PmmrsReviewModuleProps {
   onBackToHome: () => void;
@@ -30,30 +33,61 @@ export const PmmrsReviewModule: React.FC<PmmrsReviewModuleProps> = ({
   onBackToHome
 }) => {
   const [documentText, setDocumentText] = useState<string>('');
-  const [fileName, setFileName] = useState<string>('PMMRS_Empresa.pdf');
+  const [fileName, setFileName] = useState<string>('');
   const [companyName, setCompanyName] = useState<string>('Empresa Evaluada');
+  const [docInfo, setDocInfo] = useState<ExtractedDocumentInfo | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [report, setReport] = useState<PmmrsReviewReport | null>(null);
   const [activeTab, setActiveTab] = useState<'RESUMEN' | 'MATRIZ_HALLAZGOS' | 'GENERICOS' | 'INCONSISTENCIAS' | 'INFORME_FINAL'>('RESUMEN');
 
   // Load sample flawed document to demonstrate the audit capability
   const handleLoadSampleDocument = () => {
-    setDocumentText(SAMPLE_PMMRS_DOCUMENT_TEXT);
-    setFileName('PMMRS_Constructora_El_Progreso_2024.pdf');
+    const text = SAMPLE_PMMRS_DOCUMENT_TEXT;
+    const name = 'PMMRS_Constructora_El_Progreso_2024.pdf';
+    setDocumentText(text);
+    setFileName(name);
     setCompanyName('CONSTRUCTORA EL PROGRESO DEL SUR S.A.C.');
+    setDocInfo({
+      fileName: name,
+      fileSize: 1420500,
+      formattedSize: '1.35 MB',
+      fileType: 'pdf',
+      extension: 'pdf',
+      text: text,
+      pageCount: 16,
+      wordCount: text.split(/\s+/).filter(Boolean).length,
+      charCount: text.length,
+      warnings: ['Documento muestra preconfigurado para pruebas de detección de observaciones y omisiones.']
+    });
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleDocumentExtracted = (info: ExtractedDocumentInfo) => {
+    setDocInfo(info);
+    setDocumentText(info.text);
+    setFileName(info.fileName);
 
-    setFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      setDocumentText(text || '');
-    };
-    reader.readAsText(file);
+    // Auto-detect or sanitize company name
+    if (!companyName || companyName === 'Empresa Evaluada') {
+      const rzMatch = info.text.match(/(?:raz[oó]n\s+social|empresa|titular)\s*[:\-]\s*([^\n\r,;]+)/i);
+      if (rzMatch && rzMatch[1]?.trim() && rzMatch[1].trim().length > 3) {
+        setCompanyName(rzMatch[1].trim());
+      } else {
+        const cleanFromFilename = info.fileName
+          .replace(/\.[^/.]+$/, '')
+          .replace(/[_\-]+/g, ' ')
+          .replace(/\b(PMRS|PMMRS|Rev\d+|v\d+|\d{4}-\d{2}-\d{2})\b/gi, '')
+          .trim();
+        if (cleanFromFilename.length > 3) {
+          setCompanyName(cleanFromFilename);
+        }
+      }
+    }
+  };
+
+  const handleClearDocument = () => {
+    setDocInfo(null);
+    setDocumentText('');
+    setFileName('');
   };
 
   const handleRunAnalysis = async () => {
@@ -148,85 +182,110 @@ export const PmmrsReviewModule: React.FC<PmmrsReviewModuleProps> = ({
 
       {/* Upload and Configuration Area */}
       {!report && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+        <div className="bg-slate-900 border border-purple-900/30 rounded-2xl p-6 shadow-xl space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
             <div>
               <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <Upload className="w-4 h-4 text-cyan-400" />
-                Cargar Archivo o Pegar Contenido del PMMRS
+                <Upload className="w-4 h-4 text-amber-400" />
+                Cargar Archivo del PMMRS (PDF, Word, Excel o TXT)
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Formatos compatibles: Texto plano, PDF/DOCX (extraer contenido) o probar con documento muestra.
+                Extracción automática nativa de texto. Soporta <strong className="text-red-400">PDF</strong>, <strong className="text-blue-400">Word</strong> (.docx/.doc) y <strong className="text-emerald-400">Excel</strong> (.xlsx/.xls) sin caracteres binarios corruptos.
               </p>
             </div>
 
             <button
               type="button"
               onClick={handleLoadSampleDocument}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/60 text-cyan-300 border border-cyan-700/60 text-xs font-bold transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-950/60 hover:bg-purple-900/60 text-amber-300 border border-amber-500/40 text-xs font-bold transition-all cursor-pointer shadow-sm shrink-0"
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Cargar Documento Muestra con Observaciones</span>
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>Cargar Documento Muestra de Ejemplo</span>
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-            <div>
-              <label className="block font-semibold text-slate-300 mb-1">Nombre de la Empresa o Proyecto Evaluado</label>
-              <input
-                type="text"
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                placeholder="Ej: Constructora El Progreso del Sur S.A.C."
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-white"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-300 mb-1">Cargar Archivo (PDF, DOCX o TXT)</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="file"
-                  accept=".pdf,.docx,.txt"
-                  onChange={handleFileUpload}
-                  className="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 cursor-pointer"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1.5 text-xs">
-              <label className="font-semibold text-slate-300">Contenido del Documento PMMRS para Análisis:</label>
-              <span className="font-mono text-slate-500 text-[11px]">{documentText.length} caracteres</span>
-            </div>
-            <textarea
-              rows={12}
-              value={documentText}
-              onChange={(e) => setDocumentText(e.target.value)}
-              placeholder="Pegue aquí el texto completo del Plan de Minimización y Manejo de Residuos Sólidos a evaluar..."
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-white text-xs font-mono placeholder-slate-600 focus:outline-none focus:border-cyan-500 leading-relaxed"
+          {/* Company / Project Metadata */}
+          <div className="text-xs">
+            <label className="block font-semibold text-slate-300 mb-1">
+              Nombre de la Empresa o Proyecto Evaluado <span className="text-slate-500 font-normal">(se autodetecta del documento o puede editarse)</span>
+            </label>
+            <input
+              type="text"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              placeholder="Ej: Constructora El Progreso del Sur S.A.C."
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-amber-400 transition-colors font-medium"
             />
           </div>
 
-          <div className="flex justify-end pt-2">
+          {/* Document Uploader Card (Supports PDF, Word, Excel & shows loaded format icon) */}
+          <DocumentUploaderCard
+            onDocumentExtracted={handleDocumentExtracted}
+            onClear={handleClearDocument}
+            currentInfo={docInfo}
+            onLoadSample={handleLoadSampleDocument}
+          />
+
+          {/* Fallback Text Area for Direct Editing or Manual Paste if desired */}
+          {(!docInfo || !docInfo.text) && (
+            <div className="pt-2 border-t border-slate-800/80">
+              <div className="flex items-center justify-between mb-1.5 text-xs">
+                <label className="font-semibold text-slate-300">
+                  O pegue directamente el texto del PMMRS aquí:
+                </label>
+                <span className="font-mono text-slate-500 text-[11px]">{documentText.length} caracteres</span>
+              </div>
+              <textarea
+                rows={6}
+                value={documentText}
+                onChange={(e) => {
+                  setDocumentText(e.target.value);
+                  if (!fileName) setFileName('Documento_Manual.txt');
+                }}
+                placeholder="Pegue aquí el texto copiado del Plan de Minimización y Manejo de Residuos Sólidos..."
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-white text-xs font-mono placeholder-slate-600 focus:outline-none focus:border-purple-500 leading-relaxed"
+              />
+            </div>
+          )}
+
+          {/* Execute Analysis Action Button */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-800">
+            <div className="text-xs text-slate-400 flex items-center gap-2">
+              {docInfo ? (
+                <>
+                  <DocumentFormatIcon type={docInfo.fileType} size="sm" extension={docInfo.extension} />
+                  <span>
+                    Listo para auditar <strong className="text-white">{docInfo.fileName}</strong> ({docInfo.wordCount.toLocaleString()} palabras limpias).
+                  </span>
+                </>
+              ) : documentText.trim() ? (
+                <span className="text-slate-300">
+                  Texto ingresado manualmente ({documentText.length} caracteres).
+                </span>
+              ) : (
+                <span className="text-slate-500">
+                  Cargue un archivo (PDF, Word o Excel) para iniciar la auditoría técnica.
+                </span>
+              )}
+            </div>
+
             <button
               onClick={handleRunAnalysis}
               disabled={isAnalyzing || !documentText.trim()}
-              className={`flex items-center gap-2 px-7 py-3 rounded-xl font-bold text-xs shadow-xl transition-all cursor-pointer ${
+              className={`flex items-center gap-2.5 px-8 py-3.5 rounded-xl font-bold text-xs shadow-xl transition-all cursor-pointer shrink-0 ${
                 isAnalyzing || !documentText.trim()
-                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-cyan-600/30'
+                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
+                  : 'bg-gradient-to-r from-purple-700 via-purple-600 to-amber-600 hover:from-purple-600 hover:to-amber-500 text-white shadow-purple-900/40 ring-1 ring-amber-400/40'
               }`}
             >
               {isAnalyzing ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Auditando capítulos y trazabilidad...</span>
+                  <RefreshCw className="w-4 h-4 animate-spin text-amber-300" />
+                  <span>Auditando capítulos y trazabilidad normativa...</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4" />
+                  <Sparkles className="w-4 h-4 text-amber-300" />
                   <span>Ejecutar Revisión Técnica Automatizada</span>
                 </>
               )}
@@ -254,13 +313,14 @@ export const PmmrsReviewModule: React.FC<PmmrsReviewModuleProps> = ({
               </div>
 
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs uppercase font-bold text-cyan-400 tracking-wider">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs uppercase font-bold text-amber-400 tracking-wider">
                     Resultado de Evaluación Técnica
                   </span>
-                  <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
-                    {report.fileName}
-                  </span>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-800 text-slate-200 font-mono text-xs border border-slate-700">
+                    <DocumentFormatIcon type={detectDocumentType(report.fileName).type} size="sm" extension={detectDocumentType(report.fileName).extension} />
+                    <span className="font-semibold">{report.fileName}</span>
+                  </div>
                 </div>
                 <h3 className="text-xl sm:text-2xl font-black text-white">
                   {report.companyName}
