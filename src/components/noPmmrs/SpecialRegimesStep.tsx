@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Layers, Plus, Trash2, CheckCircle2, AlertTriangle, HelpCircle, ShieldCheck } from 'lucide-react';
+import { Box, Layers, Plus, Trash2, CheckCircle2, AlertTriangle, HelpCircle, ShieldCheck, Pencil, X, Check } from 'lucide-react';
 import { DiscardMaterial, PriorityGoodItem } from '../../types';
 import { RAEE_CATEGORIES, NFU_CATEGORIES } from '../../data/normativeCatalog';
 
@@ -20,6 +20,9 @@ export const SpecialRegimesStep: React.FC<SpecialRegimesStepProps> = ({
   onNext,
   onBack
 }) => {
+  const [editingDiscard, setEditingDiscard] = useState<DiscardMaterial | null>(null);
+  const [editingPriority, setEditingPriority] = useState<PriorityGoodItem | null>(null);
+
   // Discard material form state
   const [dmName, setDmName] = useState('');
   const [dmProcess, setDmProcess] = useState('');
@@ -195,13 +198,24 @@ export const SpecialRegimesStep: React.FC<SpecialRegimesStepProps> = ({
                     Proceso: {dm.generatingProcess} • Destino: {dm.destinationActivity} ({dm.recipientCompanyName})
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => onUpdateDiscard(discardMaterials.filter(d => d.id !== dm.id))}
-                  className="p-1.5 text-slate-500 hover:text-red-400"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setEditingDiscard({ ...dm })}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 transition-colors cursor-pointer"
+                    title="Modificar material de descarte"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onUpdateDiscard(discardMaterials.filter(d => d.id !== dm.id))}
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                    title="Eliminar material"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -325,13 +339,24 @@ export const SpecialRegimesStep: React.FC<SpecialRegimesStepProps> = ({
                     {pg.category} • Sistema/Operador: {pg.authorizedCollectorOrSystem}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => onUpdatePriorityGoods(priorityGoods.filter(p => p.id !== pg.id))}
-                  className="p-1.5 text-slate-500 hover:text-red-400"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setEditingPriority({ ...pg })}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 transition-colors cursor-pointer"
+                    title="Modificar bien priorizado"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onUpdatePriorityGoods(priorityGoods.filter(p => p.id !== pg.id))}
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                    title="Eliminar bien"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -355,6 +380,198 @@ export const SpecialRegimesStep: React.FC<SpecialRegimesStepProps> = ({
           <CheckCircle2 className="w-4 h-4" />
         </button>
       </div>
+
+      {/* Modal para Modificar Material de Descarte */}
+      {editingDiscard && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 my-8">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <h3 className="text-base font-bold text-white">Modificar Material de Descarte</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingDiscard(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                onUpdateDiscard(discardMaterials.map(d => d.id === editingDiscard.id ? editingDiscard : d));
+                setEditingDiscard(null);
+              }}
+              className="space-y-3.5 text-xs"
+            >
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Nombre del Subproducto / Material *</label>
+                <input
+                  type="text"
+                  required
+                  value={editingDiscard.materialName}
+                  onChange={(e) => setEditingDiscard({ ...editingDiscard, materialName: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Proceso de Origen</label>
+                  <input
+                    type="text"
+                    value={editingDiscard.generatingProcess}
+                    onChange={(e) => setEditingDiscard({ ...editingDiscard, generatingProcess: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Generación Estimada (kg/mes)</label>
+                  <input
+                    type="number"
+                    value={editingDiscard.estimatedQuantityKgMonth}
+                    onChange={(e) => setEditingDiscard({ ...editingDiscard, estimatedQuantityKgMonth: Number(e.target.value) || 0 })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Empresa / Planta Receptora</label>
+                <input
+                  type="text"
+                  value={editingDiscard.recipientCompanyName}
+                  onChange={(e) => setEditingDiscard({ ...editingDiscard, recipientCompanyName: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Actividad o Proceso de Destino</label>
+                <input
+                  type="text"
+                  value={editingDiscard.destinationActivity}
+                  onChange={(e) => setEditingDiscard({ ...editingDiscard, destinationActivity: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingDiscard(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/20"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Guardar Cambios</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Modificar Bien Priorizado */}
+      {editingPriority && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 my-8">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <h3 className="text-base font-bold text-white">Modificar Bien Priorizado ({editingPriority.regime})</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingPriority(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                onUpdatePriorityGoods(priorityGoods.map(p => p.id === editingPriority.id ? editingPriority : p));
+                setEditingPriority(null);
+              }}
+              className="space-y-3.5 text-xs"
+            >
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Descripción del Bien *</label>
+                <input
+                  type="text"
+                  required
+                  value={editingPriority.goodDescription}
+                  onChange={(e) => setEditingPriority({ ...editingPriority, goodDescription: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Unidades al Año</label>
+                  <input
+                    type="number"
+                    value={editingPriority.unitsPerYear}
+                    onChange={(e) => setEditingPriority({ ...editingPriority, unitsPerYear: Number(e.target.value) || 0 })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Masa Anual (kg/año)</label>
+                  <input
+                    type="number"
+                    value={editingPriority.massKgPerYear}
+                    onChange={(e) => setEditingPriority({ ...editingPriority, massKgPerYear: Number(e.target.value) || 0 })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Sistema Integrado o EO-RS Autorizada</label>
+                <input
+                  type="text"
+                  value={editingPriority.authorizedCollectorOrSystem}
+                  onChange={(e) => setEditingPriority({ ...editingPriority, authorizedCollectorOrSystem: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingPriority(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/20"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Guardar Cambios</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

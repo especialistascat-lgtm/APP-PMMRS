@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { GitBranch, Plus, ArrowRight, Layers, Trash2, CheckCircle2, ChevronRight, CornerDownRight, Box } from 'lucide-react';
-import { PmmrsProject, WasteItem, StageType } from '../../types';
+import { GitBranch, Plus, ArrowRight, Layers, Trash2, CheckCircle2, ChevronRight, CornerDownRight, Box, Pencil, X, Check } from 'lucide-react';
+import { PmmrsProject, WasteItem, StageType, ColorBinNTP } from '../../types';
 import { SECTOR_PRESETS } from '../../data/normativeCatalog';
 
 interface ProcessTreeStepProps {
@@ -23,7 +23,69 @@ export const ProcessTreeStep: React.FC<ProcessTreeStepProps> = ({
   const [newWasteName, setNewWasteName] = useState('');
   const [isHazardous, setIsHazardous] = useState(false);
 
+  // Edit state for modifying flow items
+  const [editingWaste, setEditingWaste] = useState<WasteItem | null>(null);
+  const [editForm, setEditForm] = useState<{
+    stage: StageType;
+    area: string;
+    process: string;
+    activity: string;
+    wasteName: string;
+    isHazardous: boolean;
+    quantity: number;
+    unit: WasteItem['unit'];
+  } | null>(null);
+
   const sectorPreset = SECTOR_PRESETS[project.company.sector];
+
+  const handleStartEdit = (waste: WasteItem) => {
+    setEditingWaste(waste);
+    setEditForm({
+      stage: waste.stage,
+      area: waste.area,
+      process: waste.process,
+      activity: waste.activity,
+      wasteName: waste.wasteName,
+      isHazardous: waste.isHazardous,
+      quantity: waste.quantity || 100,
+      unit: waste.unit || 'KG_MES'
+    });
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingWaste || !editForm) return;
+
+    const updatedWastes: WasteItem[] = project.wastes.map((w) => {
+      if (w.id === editingWaste.id) {
+        const nextColor: ColorBinNTP = editForm.isHazardous ? 'ROJO' : (w.colorCode === 'ROJO' ? 'NEGRO' : w.colorCode);
+        return {
+          ...w,
+          stage: editForm.stage,
+          area: editForm.area,
+          process: editForm.process,
+          activity: editForm.activity,
+          wasteName: editForm.wasteName,
+          isHazardous: editForm.isHazardous,
+          colorCode: nextColor,
+          baselCode: editForm.isHazardous ? (w.baselCode?.startsWith('A') ? w.baselCode : 'A1020') : (w.baselCode?.startsWith('B') ? w.baselCode : 'B3010'),
+          quantity: editForm.quantity,
+          unit: editForm.unit,
+          annualQuantityKg: editForm.quantity * 12
+        };
+      }
+      return w;
+    });
+
+    onUpdateWastes(updatedWastes);
+    setEditingWaste(null);
+    setEditForm(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingWaste(null);
+    setEditForm(null);
+  };
 
   const handleAddFlowItem = (e: React.FormEvent) => {
     e.preventDefault();
@@ -323,7 +385,16 @@ export const ProcessTreeStep: React.FC<ProcessTreeStepProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 self-end md:self-center">
+                <div className="flex items-center gap-1 self-end md:self-center">
+                  <button
+                    type="button"
+                    onClick={() => handleStartEdit(w)}
+                    className="p-2 rounded-lg text-slate-500 hover:text-amber-400 hover:bg-amber-500/10 transition-colors cursor-pointer"
+                    title="Modificar flujo de residuos"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => handleRemoveWaste(w.id)}
@@ -338,6 +409,162 @@ export const ProcessTreeStep: React.FC<ProcessTreeStepProps> = ({
           </div>
         )}
       </div>
+
+      {/* Modal para Modificar Flujo de Residuos */}
+      {editingWaste && editForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 text-xs">
+            
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Modificar Flujo de Generación</h3>
+                  <p className="text-[11px] text-slate-400">Actualice la vinculación de proceso, actividad y residuo</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="block font-semibold text-slate-300 mb-1">Etapa del Ciclo:</label>
+                  <select
+                    value={editForm.stage}
+                    onChange={(e) => setEditForm({ ...editForm, stage: e.target.value as StageType })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                  >
+                    <option value="PLANIFICACION_DISENO">Planificación y Diseño</option>
+                    <option value="CONSTRUCCION_INSTALACION">Construcción e Instalación</option>
+                    <option value="OPERACION_MANTENIMIENTO">Operación y Mantenimiento</option>
+                    <option value="CIERRE_ABANDONO">Cierre y Abandono</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Área Operativa:</label>
+                  <input
+                    type="text"
+                    value={editForm.area}
+                    onChange={(e) => setEditForm({ ...editForm, area: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                    placeholder="Ej. Almacén Central"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Proceso Principal:</label>
+                  <input
+                    type="text"
+                    value={editForm.process}
+                    onChange={(e) => setEditForm({ ...editForm, process: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                    placeholder="Ej. Recepción de insumos"
+                    required
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block font-semibold text-slate-300 mb-1">Actividad Generadora:</label>
+                  <input
+                    type="text"
+                    value={editForm.activity}
+                    onChange={(e) => setEditForm({ ...editForm, activity: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                    placeholder="Ej. Desembalaje y acondicionamiento"
+                    required
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block font-semibold text-slate-300 mb-1">Residuo Sólido Generado:</label>
+                  <input
+                    type="text"
+                    value={editForm.wasteName}
+                    onChange={(e) => setEditForm({ ...editForm, wasteName: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                    placeholder="Ej. Cartón corrugado y cajas"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Clasificación:</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, isHazardous: false })}
+                      className={`flex-1 py-2 px-3 rounded-xl font-bold transition-all ${
+                        !editForm.isHazardous
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                      }`}
+                    >
+                      No Peligroso
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, isHazardous: true })}
+                      className={`flex-1 py-2 px-3 rounded-xl font-bold transition-all ${
+                        editForm.isHazardous
+                          ? 'bg-red-600 text-white'
+                          : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                      }`}
+                    >
+                      Peligroso
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Cantidad Mensual Estimada:</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      value={editForm.quantity}
+                      onChange={(e) => setEditForm({ ...editForm, quantity: Number(e.target.value) || 0 })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono"
+                    />
+                    <span className="self-center font-bold text-slate-400 px-2 py-1 bg-slate-800 rounded-lg">
+                      kg/mes
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold cursor-pointer transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow-lg shadow-amber-500/20 cursor-pointer transition-colors"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Guardar Modificación</span>
+                </button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      )}
 
       {/* Buttons Navigation */}
       <div className="flex items-center justify-between pt-4">

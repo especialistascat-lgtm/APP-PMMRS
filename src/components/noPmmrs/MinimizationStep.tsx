@@ -11,7 +11,10 @@ import {
   Clock, 
   ShieldCheck,
   Award,
-  Layers
+  Layers,
+  Pencil,
+  X,
+  Check
 } from 'lucide-react';
 import { MinimizationMeasure, WasteItem, HierarchyLevel } from '../../types';
 
@@ -40,6 +43,7 @@ export const MinimizationStep: React.FC<MinimizationStepProps> = ({
   onNext,
   onBack
 }) => {
+  const [editingMeasure, setEditingMeasure] = useState<MinimizationMeasure | null>(null);
   const [selectedWasteId, setSelectedWasteId] = useState<string>(wastes[0]?.id || '');
   const [hierarchyLevel, setHierarchyLevel] = useState<HierarchyLevel>('3_REDUCIR');
   const [measureName, setMeasureName] = useState('');
@@ -343,10 +347,18 @@ export const MinimizationStep: React.FC<MinimizationStepProps> = ({
                     <h4 className="font-bold text-sm text-white">{m.measureName}</h4>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
                       {m.hierarchyLevel.replace('_', ' ')}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => setEditingMeasure({ ...m })}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 transition-colors cursor-pointer"
+                      title="Modificar medida"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleRemoveMeasure(m.id)}
@@ -393,6 +405,143 @@ export const MinimizationStep: React.FC<MinimizationStepProps> = ({
           <CheckCircle2 className="w-4 h-4" />
         </button>
       </div>
+
+      {/* Modal para Modificar Medida de Minimización */}
+      {editingMeasure && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5 my-8">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <h3 className="text-base font-bold text-white">Modificar Medida de Minimización</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingMeasure(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                onUpdateMeasures(measures.map(m => m.id === editingMeasure.id ? editingMeasure : m));
+                setEditingMeasure(null);
+              }}
+              className="space-y-4 text-xs"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="md:col-span-2">
+                  <label className="block text-slate-300 font-semibold mb-1">Nombre de la Medida *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingMeasure.measureName}
+                    onChange={(e) => setEditingMeasure({ ...editingMeasure, measureName: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Jerarquía de Minimización</label>
+                  <select
+                    value={editingMeasure.hierarchyLevel}
+                    onChange={(e) => setEditingMeasure({ ...editingMeasure, hierarchyLevel: e.target.value as HierarchyLevel })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200"
+                  >
+                    {HIERARCHY_OPTIONS.map((ho) => (
+                      <option key={ho.level} value={ho.level}>{ho.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Meta Cuantificable</label>
+                  <input
+                    type="text"
+                    value={editingMeasure.targetGoal}
+                    onChange={(e) => setEditingMeasure({ ...editingMeasure, targetGoal: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-emerald-300 font-semibold"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-slate-300 font-semibold mb-1">Causa / Diagnóstico del Problema</label>
+                  <input
+                    type="text"
+                    value={editingMeasure.problemStatement}
+                    onChange={(e) => setEditingMeasure({ ...editingMeasure, problemStatement: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-slate-300 font-semibold mb-1">Acción Operativa Detallada</label>
+                  <textarea
+                    rows={2}
+                    value={editingMeasure.detailedAction}
+                    onChange={(e) => setEditingMeasure({ ...editingMeasure, detailedAction: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Presupuesto Estimado (S/ PEN)</label>
+                  <input
+                    type="number"
+                    value={editingMeasure.estimatedCostPen}
+                    onChange={(e) => setEditingMeasure({ ...editingMeasure, estimatedCostPen: Number(e.target.value) || 0 })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Tipo de Gasto</label>
+                  <select
+                    value={editingMeasure.capexOpex}
+                    onChange={(e) => setEditingMeasure({ ...editingMeasure, capexOpex: e.target.value as any })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200"
+                  >
+                    <option value="OPEX">OPEX (Gasto Operativo)</option>
+                    <option value="CAPEX">CAPEX (Inversión de Capital)</option>
+                  </select>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-slate-300 font-semibold mb-1">Rol / Cargo Responsable</label>
+                  <input
+                    type="text"
+                    value={editingMeasure.responsibleRole}
+                    onChange={(e) => setEditingMeasure({ ...editingMeasure, responsibleRole: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingMeasure(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/20"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Guardar Cambios</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

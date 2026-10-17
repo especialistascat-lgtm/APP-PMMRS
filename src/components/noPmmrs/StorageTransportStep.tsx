@@ -11,7 +11,10 @@ import {
   ShieldAlert, 
   Flame, 
   Compass, 
-  Layers
+  Layers,
+  Pencil,
+  X,
+  Check
 } from 'lucide-react';
 import { StorageArea, WasteItem } from '../../types';
 import { NTP_COLORS_NO_MUNICIPAL } from '../../data/normativeCatalog';
@@ -32,6 +35,7 @@ export const StorageTransportStep: React.FC<StorageTransportStepProps> = ({
   onBack
 }) => {
   // New Storage Area Form
+  const [editingArea, setEditingArea] = useState<StorageArea | null>(null);
   const [name, setName] = useState('');
   const [storageType, setStorageType] = useState<StorageArea['storageType']>('CENTRAL');
   const [locationDescription, setLocationDescription] = useState('');
@@ -339,13 +343,24 @@ export const StorageTransportStep: React.FC<StorageTransportStepProps> = ({
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => handleRemoveStorage(s.id)}
-                  className="p-1.5 text-slate-500 hover:text-red-400 self-end md:self-center"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-1.5 self-end md:self-center">
+                  <button
+                    type="button"
+                    onClick={() => setEditingArea({ ...s })}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 transition-colors cursor-pointer"
+                    title="Modificar área de almacenamiento"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveStorage(s.id)}
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                    title="Eliminar área"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -369,6 +384,131 @@ export const StorageTransportStep: React.FC<StorageTransportStepProps> = ({
           <CheckCircle2 className="w-4 h-4" />
         </button>
       </div>
+
+      {/* Modal para Modificar Área de Almacenamiento */}
+      {editingArea && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5 my-8">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <h3 className="text-base font-bold text-white">Modificar Área de Almacenamiento</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingArea(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                onUpdateStorage(storageAreas.map(a => a.id === editingArea.id ? editingArea : a));
+                setEditingArea(null);
+              }}
+              className="space-y-4 text-xs"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="md:col-span-2">
+                  <label className="block text-slate-300 font-semibold mb-1">Nombre del Área / Almacén *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingArea.name}
+                    onChange={(e) => setEditingArea({ ...editingArea, name: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Tipo de Almacenamiento</label>
+                  <select
+                    value={editingArea.storageType}
+                    onChange={(e) => setEditingArea({ ...editingArea, storageType: e.target.value as any })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200"
+                  >
+                    <option value="CENTRAL">Almacén Central / General</option>
+                    <option value="INTERMEDIO">Almacén Intermedio</option>
+                    <option value="INICIAL">Punto de Acopio Inicial</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Coordenadas UTM WGS 84</label>
+                  <input
+                    type="text"
+                    value={editingArea.utmCoordinatesWgs84}
+                    onChange={(e) => setEditingArea({ ...editingArea, utmCoordinatesWgs84: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-cyan-300 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Capacidad (m³)</label>
+                  <input
+                    type="number"
+                    value={editingArea.capacityM3}
+                    onChange={(e) => setEditingArea({ ...editingArea, capacityM3: Number(e.target.value) || 0 })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Dimensiones (m²)</label>
+                  <input
+                    type="number"
+                    value={editingArea.dimensionsM2}
+                    onChange={(e) => setEditingArea({ ...editingArea, dimensionsM2: Number(e.target.value) || 0 })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-slate-300 font-semibold mb-1">Características de Piso y Contención</label>
+                  <input
+                    type="text"
+                    value={editingArea.floorCharacteristics}
+                    onChange={(e) => setEditingArea({ ...editingArea, floorCharacteristics: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-slate-300 font-semibold mb-1">Rol / Cargo Responsable</label>
+                  <input
+                    type="text"
+                    value={editingArea.responsibleRole}
+                    onChange={(e) => setEditingArea({ ...editingArea, responsibleRole: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingArea(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/20"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Guardar Cambios</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );
